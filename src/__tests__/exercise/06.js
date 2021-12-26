@@ -7,6 +7,12 @@ import Location from '../../examples/location'
 
 // 🐨 set window.navigator.geolocation to an object that has a getCurrentPosition mock function
 
+beforeAll(() => {
+  window.navigator.geolocation = {
+    getCurrentPosition: jest.fn(),
+  }
+})
+
 // 💰 I'm going to give you this handy utility function
 // it allows you to create a promise that you can resolve/reject on demand.
 function deferred() {
@@ -28,13 +34,45 @@ function deferred() {
 test('displays the users current location', async () => {
   // 🐨 create a fakePosition object that has an object called "coords" with latitude and longitude
   // 📜 https://developer.mozilla.org/en-US/docs/Web/API/GeolocationPosition
-  //
+
+  const fakePosition = {
+    coords: {
+      latitude: 35,
+      longitude: 139,
+    },
+  }
+
   // 🐨 create a deferred promise here
   //
+  const {promise, resolve} = deferred()
   // 🐨 Now we need to mock the geolocation's getCurrentPosition function
   // To mock something you need to know its API and simulate that in your mock:
   // 📜 https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition
   //
+  window.navigator.geolocation.getCurrentPosition.mockImplementation(
+    callback => {
+      promise.then(() => callback(fakePosition))
+    },
+  )
+
+  render(<Location />)
+
+  expect(screen.getByLabelText(/loading/i)).toBeInTheDocument()
+
+  await act(async () => {
+    resolve()
+    await promise
+  })
+
+  expect(screen.queryByLabelText(/loading/i)).not.toBeInTheDocument()
+
+  expect(screen.getByText(/latitude/i)).toHaveTextContent(
+    `Latitude: ${fakePosition.coords.latitude}`,
+  )
+
+  expect(screen.getByText(/longitude/i)).toHaveTextContent(
+    `Longitude: ${fakePosition.coords.longitude}`,
+  )
   // here's an example of the API:
   // function success(position) {}
   // function error(error) {}
